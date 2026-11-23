@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { CatalogPanel } from "@/features/catalog";
 import { CircuitBoard } from "@/features/circuit";
 import { InputRack, SignalMonitor } from "@/features/simulation";
 import { ChallengePanel } from "@/features/challenge";
+import { PuzzlePanel } from "@/features/puzzle";
 import { WorkspaceBar } from "@/features/workspace";
 import { useLab } from "./useLab";
 const lab = useLab();
@@ -13,6 +14,7 @@ const { tool } = lab.placement,
   { signals } = lab.simulation;
 const { target, table, passed, inspected, hint } = lab.challenge;
 const { status } = lab.workspace;
+const sideTab = ref<"challenge" | "puzzle">("challenge");
 const selectedNode = computed(() =>
   document.value.nodes.find((node) => node.id === selected.value),
 );
@@ -55,6 +57,7 @@ onUnmounted(() => window.removeEventListener("keydown", keydown));
     <main class="workbench">
       <CatalogPanel
         :tool="tool"
+        :remaining="lab.puzzle.active.value ? lab.puzzle.remaining.value : null"
         @choose="
           tool = $event;
           pending = null;
@@ -62,7 +65,14 @@ onUnmounted(() => window.removeEventListener("keydown", keydown));
       />
       <section class="center-workspace">
         <div class="board-toolbar">
-          <span><b>工作台</b><small>单比特 · 即时传播</small></span>
+          <span
+            ><b>工作台</b
+            ><small v-if="lab.puzzle.active.value" class="puzzle-badge"
+              >谜题模式 · 🔒 为固定部分</small
+            ><small v-else-if="lab.puzzle.designing.value" class="puzzle-badge design"
+              >谜题设计模式</small
+            ><small v-else>单比特 · 即时传播</small></span
+          >
           <div>
             <button
               :disabled="!selected"
@@ -100,11 +110,13 @@ onUnmounted(() => window.removeEventListener("keydown", keydown));
                 :value="selectedNode.label"
                 maxlength="40"
                 aria-label="所选元件名称"
+                :disabled="!!selectedNode.fixed"
                 @change="
                   lab.renameNode(($event.target as HTMLInputElement).value)
                 " /></label
             ><span
-              >{{ selectedNode.kind }} · 拖动移动 · Delete 删除</span
+              >{{ selectedNode.kind }}
+              {{ selectedNode.fixed ? "· 🔒 固定" : "· 拖动移动 · Delete 删除" }}</span
             ></template
           ><span v-else>{{
             selected
@@ -125,17 +137,43 @@ onUnmounted(() => window.removeEventListener("keydown", keydown));
           />
         </div>
       </section>
-      <ChallengePanel
-        :document="document"
-        :target="target"
-        :table="table"
-        :passed="passed"
-        :inspected="inspected"
-        :hint="hint"
-        @choose="lab.challenge.choose"
-        @check="inspected = true"
-        @hint="hint = !hint"
-      />
+      <div class="side-panel">
+        <div class="side-tabs" role="tablist">
+          <button
+            role="tab"
+            :aria-selected="sideTab === 'challenge'"
+            :class="{ active: sideTab === 'challenge' }"
+            @click="sideTab = 'challenge'"
+          >
+            实验目标
+          </button>
+          <button
+            role="tab"
+            :aria-selected="sideTab === 'puzzle'"
+            :class="{ active: sideTab === 'puzzle' }"
+            @click="sideTab = 'puzzle'"
+          >
+            电路谜题
+            <i v-if="lab.puzzle.active.value" class="tab-dot" aria-hidden="true" />
+          </button>
+        </div>
+        <ChallengePanel
+          v-show="sideTab === 'challenge'"
+          :document="document"
+          :target="target"
+          :table="table"
+          :passed="passed"
+          :inspected="inspected"
+          :hint="hint"
+          @choose="lab.challenge.choose"
+          @check="inspected = true"
+          @hint="hint = !hint"
+        />
+        <PuzzlePanel
+          v-show="sideTab === 'puzzle'"
+          :puzzle="lab.puzzle"
+        />
+      </div>
     </main>
     <footer class="status-bar" :class="notice.tone" role="status">
       <span

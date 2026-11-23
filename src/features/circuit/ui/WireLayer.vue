@@ -23,6 +23,7 @@ function pathFor(id: string) {
   <g class="wires"
     ><g v-for="wire in document.wires" :key="wire.id"
       ><path
+        v-if="!wire.fixed"
         :d="pathFor(wire.id)"
         class="wire-hit"
         role="button"
@@ -35,7 +36,10 @@ function pathFor(id: string) {
         :class="[
           'wire',
           `wire-${signals.wires[wire.id] ?? 'X'}`,
-          { 'wire-selected': selected === wire.id },
+          {
+            'wire-selected': selected === wire.id,
+            'wire-fixed': wire.fixed,
+          },
         ]" /></g
   ></g>
 </template>

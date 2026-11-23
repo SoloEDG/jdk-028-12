@@ -5,6 +5,7 @@ import { usePlacement } from "@/features/catalog";
 import { useCircuit } from "@/features/circuit";
 import { useSimulation } from "@/features/simulation";
 import { useChallenge } from "@/features/challenge";
+import { usePuzzle } from "@/features/puzzle";
 import { loadInitial, useWorkspace } from "@/features/workspace";
 export function useLab() {
   const initial = loadInitial(),
@@ -20,9 +21,11 @@ export function useLab() {
   const circuit = useCircuit(document, notify);
   const simulation = useSimulation(document),
     challenge = useChallenge(document);
+  const puzzle = usePuzzle(document, notify);
   const workspace = useWorkspace(document, notify, () => {
     circuit.resetSelection();
     challenge.reset();
+    puzzle.reset();
     placement.tool.value = null;
   });
   function place(point: Point) {
@@ -34,11 +37,19 @@ export function useLab() {
       });
       return;
     }
-    const node = placement.createNode(
-      document.value,
-      placement.tool.value,
-      point,
-    );
+    const kind = placement.tool.value;
+    if (!puzzle.canPlace(kind)) {
+      notify({
+        tone: "error",
+        message:
+          kind === "INPUT" || kind === "OUTPUT"
+            ? "谜题模式下不能自行添加输入/输出端"
+            : `${kind} 的库存已用完（剩 ${puzzle.remaining.value?.[kind] ?? 0} 个）`,
+      });
+      placement.tool.value = null;
+      return;
+    }
+    const node = placement.createNode(document.value, kind, point);
     document.value.nodes.push(node);
     circuit.selected.value = node.id;
     placement.tool.value = null;
@@ -49,7 +60,7 @@ export function useLab() {
   }
   function move(id: string, point: Point) {
     const node = document.value.nodes.find((n) => n.id === id);
-    if (node) {
+    if (node && !node.fixed) {
       node.x = point.x;
       node.y = point.y;
     }
@@ -63,7 +74,12 @@ export function useLab() {
     const node = document.value.nodes.find(
       (n) => n.id === circuit.selected.value,
     );
-    if (node) node.label = label.trim().slice(0, 40) || node.kind;
+    if (!node) return;
+    if (node.fixed) {
+      notify({ tone: "error", message: "固定元件不能改名" });
+      return;
+    }
+    node.label = label.trim().slice(0, 40) || node.kind;
   }
   return {
     document,
@@ -73,6 +89,7 @@ export function useLab() {
     circuit,
     simulation,
     challenge,
+    puzzle,
     workspace,
     place,
     move,

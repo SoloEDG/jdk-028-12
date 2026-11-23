@@ -32,12 +32,23 @@ export function useCircuit(
   }
   function deleteSelected() {
     if (!selected.value) return;
-    if (document.value.nodes.some((node) => node.id === selected.value))
-      removeNode(document.value, selected.value);
-    else
+    const node = document.value.nodes.find((n) => n.id === selected.value);
+    if (node) {
+      if (node.fixed) {
+        notify({ tone: "error", message: "该元件是谜题固定部分，不能删除" });
+        return;
+      }
+      removeNode(document.value, node.id);
+    } else {
+      const wire = document.value.wires.find((w) => w.id === selected.value);
+      if (wire?.fixed) {
+        notify({ tone: "error", message: "该连线是谜题固定部分，不能拆除" });
+        return;
+      }
       document.value.wires = document.value.wires.filter(
         (wire) => wire.id !== selected.value,
       );
+    }
     resetSelection();
     notify({ tone: "info", message: "已删除所选元件或连线" });
   }

@@ -21,7 +21,7 @@ const spec = computed(() => getSpec(props.node.kind));
 <template>
   <g
     class="gate-node"
-    :class="{ 'is-selected': selected }"
+    :class="{ 'is-selected': selected, 'is-fixed': node.fixed }"
     :data-node="node.id"
     role="group"
     tabindex="0"
@@ -40,6 +40,13 @@ const spec = computed(() => getSpec(props.node.kind));
       class="node-label"
       pointer-events="none"
       >{{ node.label }}</text
+    ><text
+      v-if="node.fixed"
+      :x="node.x + BOARD.nodeWidth - 14"
+      :y="node.y + 20"
+      class="node-lock"
+      pointer-events="none"
+      >🔒</text
     ><text
       :x="node.x + 56"
       :y="node.y + 57"

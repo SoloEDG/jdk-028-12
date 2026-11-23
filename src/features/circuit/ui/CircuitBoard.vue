@@ -37,6 +37,7 @@ function startDrag(event: PointerEvent, id: string) {
   if (event.button !== 0) return;
   emit("select", id);
   const node = props.document.nodes.find((n) => n.id === id)!;
+  if (node.fixed) return; // 固定门不可拖动
   const point = coordinate(event);
   drag = { id, offset: { x: point.x - node.x, y: point.y - node.y } };
   svg.value?.setPointerCapture(event.pointerId);
